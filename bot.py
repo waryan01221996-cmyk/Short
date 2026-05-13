@@ -2,27 +2,42 @@ import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
 import time
 import random
+import os
 import sys
 
 def log(message):
+    # Log dengan timestamp agar mudah dipantau di GitHub Actions
     timestamp = time.strftime("%H:%M:%S", time.localtime())
     print(f"[{timestamp}] {message}", flush=True)
 
+def get_chrome_main_version():
+    # Mendeteksi versi Chrome yang terinstal di runner Ubuntu
+    try:
+        version_output = os.popen('google-chrome --version').read()
+        # Mengambil angka pertama (misal: 147 dari 147.0.7727.0)
+        main_version = version_output.split()[2].split('.')[0]
+        return int(main_version)
+    except Exception as e:
+        log(f"Gagal deteksi versi Chrome: {e}")
+        return None
+
 def run_bot():
-    log("=== MEMULAI BOT TRAFFIC (VERSI PERBAIKAN) ===")
+    log("=== MEMULAI BOT TRAFFIC (STABLE VERSION) ===")
     
+    version = get_chrome_main_version()
+    log(f"Chrome terdeteksi versi: {version}")
+
     options = uc.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1920,1080')
-    options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
     
     driver = None
     try:
-        log("Mencoba inisialisasi browser (Auto-detecting version)...")
-        # undetected-chromedriver akan mencoba mencocokkan versi secara otomatis
-        driver = uc.Chrome(options=options)
+        log("Inisialisasi driver...")
+        # Memaksa driver menggunakan versi yang sama dengan browser
+        driver = uc.Chrome(options=options, version_main=version)
         
         links = [
             "https://sfl.gl/DBAlFU",
@@ -32,47 +47,35 @@ def run_bot():
         random.shuffle(links)
 
         for index, link in enumerate(links, 1):
-            log(f"--- Memproses Link {index}/{len(links)} ---")
-            log(f"Target: {link}")
-            
+            log(f"Memproses [{index}/{len(links)}]: {link}")
             try:
                 driver.get(link)
-                log(f"Halaman terbuka: {driver.title}")
+                time.sleep(15) # Tunggu loading
                 
-                # Tunggu loading iklan
-                time.sleep(15)
-                
-                # Logika klik tombol otomatis
-                buttons = driver.find_elements(By.TAG_NAME, "button")
-                found_btn = False
-                for btn in buttons:
+                # Cari tombol interaksi secara luas
+                potential_buttons = driver.find_elements(By.TAG_NAME, "button")
+                for btn in potential_buttons:
                     text = btn.text.lower()
-                    if any(x in text for x in ["continue", "next", "get link", "lanjut"]):
-                        log(f"Menemukan tombol: '{btn.text}' - Mencoba klik...")
+                    if any(x in text for x in ["continue", "get link", "next", "lanjut"]):
                         driver.execute_script("arguments[0].click();", btn)
-                        found_btn = True
+                        log(f"Klik tombol: {btn.text}")
                         break
                 
-                # Waktu tunggu agar traffic dianggap valid oleh penyedia shortlink
-                wait = random.randint(30, 50)
-                log(f"Stay di halaman selama {wait} detik...")
-                time.sleep(wait)
+                # Simulasi waktu baca agar traffic valid
+                wait_time = random.randint(30, 45)
+                log(f"Menunggu {wait_time} detik...")
+                time.sleep(wait_time)
                 
-                log(f"URL Akhir: {driver.current_url}")
-                log("Selesai memproses satu link.")
-
+                log(f"Status Akhir: {driver.current_url}")
             except Exception as e:
-                log(f"Gagal pada link ini: {str(e)}")
+                log(f"Gagal pada link: {e}")
 
     except Exception as e:
-        log(f"CRITICAL ERROR: {str(e)}")
-        log("Tips: Jika error 'session not created', pastikan versi Chrome di main.yml sudah terbaru.")
-    
+        log(f"CRITICAL ERROR: {e}")
     finally:
         if driver:
             driver.quit()
             log("Browser ditutup.")
-        log("=== PROSES SELESAI ===")
 
 if __name__ == "__main__":
     run_bot()
