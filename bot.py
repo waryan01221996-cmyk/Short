@@ -1,57 +1,75 @@
 import undetected_chromedriver as uc
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 import time
 import random
+import sys
+
+def log(message):
+    timestamp = time.strftime("%H:%M:%S", time.localtime())
+    print(f"[{timestamp}] {message}", flush=True)
 
 def run_bot():
+    log("=== MEMULAI BOT TRAFFIC (SINGLE RUN) ===")
+    
     options = uc.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--window-size=1920,1080')
     
-    # Menyamarkan bot agar terlihat seperti browser asli
-    driver = uc.Chrome(options=options)
-    
-    links = [
-        "https://sfl.gl/DBAlFU",
-        "https://sfl.gl/6zJpYNM"
-    ]
-    
-    random.shuffle(links)
+    driver = None
+    try:
+        log("Membuka browser...")
+        driver = uc.Chrome(options=options)
+        
+        links = [
+            "https://sfl.gl/DBAlFU",
+            "https://sfl.gl/6zJpYNM"
+        ]
+        
+        random.shuffle(links)
 
-    for link in links:
-        try:
-            print(f"Mengunjungi: {link}")
-            driver.get(link)
+        for index, link in enumerate(links, 1):
+            log(f"--- Memproses Link {index}/{len(links)} ---")
+            log(f"Target: {link}")
             
-            # Tahap 1: Menunggu dan mencari tombol 'Continue' atau sejenisnya
-            # Kita gunakan selector umum yang sering dipakai shortlink
-            time.sleep(random.randint(10, 15))
-            
-            # Mencoba klik tombol yang mungkin ada (Continue/Next)
             try:
+                driver.get(link)
+                log(f"Halaman terbuka: {driver.title}")
+                
+                # Menunggu loading awal halaman iklan
+                time.sleep(15)
+                
+                # Mencoba klik tombol transisi (Continue/Get Link)
                 buttons = driver.find_elements(By.TAG_NAME, "button")
+                found_btn = False
                 for btn in buttons:
-                    if "continue" in btn.text.lower() or "next" in btn.text.lower():
+                    text = btn.text.lower()
+                    if any(x in text for x in ["continue", "next", "get link", "lanjut"]):
+                        log(f"Menemukan tombol: '{btn.text}' - Mencoba klik...")
                         driver.execute_script("arguments[0].click();", btn)
-                        print("Tombol transisi diklik.")
+                        found_btn = True
                         break
-            except:
-                pass
+                
+                # Stay di halaman untuk validasi traffic
+                wait = random.randint(25, 45)
+                log(f"Stay di halaman selama {wait} detik agar traffic valid...")
+                time.sleep(wait)
+                
+                log(f"URL Terakhir: {driver.current_url}")
+                log("Selesai memproses link ini.")
 
-            # Tahap 2: Menunggu link akhir muncul
-            time.sleep(15)
-            print(f"Posisi saat ini: {driver.current_url}")
-            
-            # Jika sampai ke link akhir, pundi uang biasanya baru terhitung
-            print(f"Berhasil memproses link: {driver.title}")
-            
-        except Exception as e:
-            print(f"Gagal pada {link}: {e}")
-            
-    driver.quit()
+            except Exception as e:
+                log(f"Gagal memproses link ini: {str(e)}")
+
+    except Exception as e:
+        log(f"CRITICAL ERROR: {str(e)}")
+    
+    finally:
+        if driver:
+            driver.quit()
+            log("Browser ditutup.")
+        log("=== PROSES SELESAI (TIDAK ADA RERUN) ===")
 
 if __name__ == "__main__":
     run_bot()
