@@ -1,11 +1,12 @@
-name: Traffic Generator Manual Run
+name: Traffic Generator Perbaikan
 
 on:
-  workflow_dispatch: # Hanya mengizinkan pemicu manual dari web GitHub
+  workflow_dispatch: # Pemicu manual saja
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -15,13 +16,14 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install Chrome
+      - name: Install Google Chrome Terbaru
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
       - name: Install Dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install selenium undetected-chromedriver webdriver-manager
 
       - name: Execute Bot
