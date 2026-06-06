@@ -1,3 +1,5 @@
-selenium
-undetected-chromedriver
-webdriver-manager
+numpy
+pyTelegramBotAPI
+websocket-client
+requests
+urllib3
