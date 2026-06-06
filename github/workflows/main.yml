@@ -1,9 +1,9 @@
 name: Dono
 
 on:
-  workflow_dispatch: # Hanya bisa dijalankan secara manual
+  workflow_dispatch: # Hanya bisa dijalankan secara manual dari tab Actions GitHub
 
-# Mengizinkan GitHub Actions untuk menghapus riwayat run lama dan memicu run baru
+# Mengizinkan GitHub Actions untuk mengelola riwayat run lama dan memicu run baru
 permissions:
   actions: write
   contents: read
@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install selenium webdriver-manager
+          pip install selenium webdriver-manager numpy pyTelegramBotAPI websocket-client requests urllib3
 
       - name: Run bot
         run: python -u bot.py
@@ -39,7 +39,6 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🧹 Membersihkan riwayat run lama untuk workflow: $GITHUB_WORKFLOW..."
-          # Mengambil daftar run ID yang sudah completed berdasarkan nama workflow saat ini
           for run_id in $(gh run list --workflow="$GITHUB_WORKFLOW" --status=completed --json databaseId --jq '.[].databaseId'); do
             echo "Menghapus run ID: $run_id"
             gh run delete "$run_id"
@@ -51,5 +50,4 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "🔄 Memulai ulang workflow ($GITHUB_WORKFLOW) secara otomatis..."
-          # Memicu ulang menggunakan nama workflow resmi yang terdaftar
           gh workflow run "$GITHUB_WORKFLOW"
