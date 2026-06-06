@@ -1,13 +1,18 @@
-name: Bot Traffic Fix Final
+name: Dono
 
 on:
-  workflow_dispatch:
+  workflow_dispatch: # Hanya bisa dijalankan secara manual
+
+# Mengizinkan GitHub Actions untuk menghapus riwayat run lama dan memicu run baru
+permissions:
+  actions: write
+  contents: read
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Setup Python
@@ -15,19 +20,30 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install Google Chrome Stable
+      - name: Install dependencies
         run: |
-          # Cara instalasi Chrome yang lebih aman dan bersih
-          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | gpg --dearmor | sudo tee /usr/share/keyrings/googlechrome-linux-keyring.gpg >/dev/null
-          echo "deb [arch=amd64 signed-by=/usr/share/keyrings/googlechrome-linux-keyring.gpg] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
-          sudo apt-get update
-          sudo apt-get install -y google-chrome-stable
+          python -m pip install --upgrade pip
+          # Hanya menginstal library yang benar-benar digunakan oleh skrip trading WebSocket kita
+          pip install numpy pyTelegramBotAPI websocket-client requests urllib3
 
-      - name: Install Dependencies
-        run: |
-          pip install selenium undetected-chromedriver webdriver-manager
+      - name: Run bot
+        run: python -u bot.py
 
-      - name: Execute Bot
+      - name: Hapus Riwayat Workflows Lama (Sukses & Gagal)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          export PYTHONUNBUFFERED=1
-          python bot.py
+          echo "🧹 Membersihkan riwayat run lama untuk workflow: $GITHUB_WORKFLOW..."
+          for run_id in $(gh run list --workflow="$GITHUB_WORKFLOW" --status=completed --json databaseId --jq '.[].databaseId'); do
+            echo "Menghapus run ID: $run_id"
+            gh run delete "$run_id"
+          done
+
+      - name: Trigger Rerun Otomatis
+        if: always() 
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔄 Memulai ulang workflow ($GITHUB_WORKFLOW) secara otomatis..."
+          gh workflow run "$GITHUB_WORKFLOW"
