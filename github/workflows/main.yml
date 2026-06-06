@@ -1,13 +1,18 @@
-name: Traffic Generator Manual Run
+name: Dono
 
 on:
-  workflow_dispatch: # Hanya mengizinkan pemicu manual dari web GitHub
+  workflow_dispatch: # Hanya bisa dijalankan secara manual
+
+# Mengizinkan GitHub Actions untuk menghapus riwayat run lama dan memicu run baru
+permissions:
+  actions: write
+  contents: read
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v3
 
       - name: Setup Python
@@ -15,16 +20,36 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Install Chrome
+      - name: Install Google Chrome
         run: |
           sudo apt-get update
           sudo apt-get install -y google-chrome-stable
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
-          pip install selenium undetected-chromedriver webdriver-manager
+          python -m pip install --upgrade pip
+          pip install selenium webdriver-manager
 
-      - name: Execute Bot
+      - name: Run bot
+        run: python -u bot.py
+
+      - name: Hapus Riwayat Workflows Lama (Sukses & Gagal)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          export PYTHONUNBUFFERED=1
-          python bot.py
+          echo "🧹 Membersihkan riwayat run lama untuk workflow: $GITHUB_WORKFLOW..."
+          # Mengambil daftar run ID yang sudah completed berdasarkan nama workflow saat ini
+          for run_id in $(gh run list --workflow="$GITHUB_WORKFLOW" --status=completed --json databaseId --jq '.[].databaseId'); do
+            echo "Menghapus run ID: $run_id"
+            gh run delete "$run_id"
+          done
+
+      - name: Trigger Rerun Otomatis
+        if: always() 
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "🔄 Memulai ulang workflow ($GITHUB_WORKFLOW) secara otomatis..."
+          # Memicu ulang menggunakan nama workflow resmi yang terdaftar
+          gh workflow run "$GITHUB_WORKFLOW"
